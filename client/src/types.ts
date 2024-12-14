@@ -20,4 +20,5 @@ export interface StreamResponse {
   };
   response?: string;
   message?: string;
+  done?: boolean;
 }

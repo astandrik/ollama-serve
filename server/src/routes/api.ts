@@ -29,15 +29,28 @@ export function createApiRouter(ollamaPort: number) {
 
       // Let ModelService handle all response headers and progress updates
 
+      const boundary = "PROGRESS_BOUNDARY";
+      res.setHeader(
+        "Content-Type",
+        `multipart/x-mixed-replace; boundary=${boundary}`
+      );
+      res.setHeader("Cache-Control", "no-cache");
+      res.setHeader("Connection", "keep-alive");
+      res.setHeader("Access-Control-Allow-Origin", "*");
+
       try {
         await modelService.pull(model, res);
-        res.write(
-          `data: {"status":"ready","message":"Model ${model} is ready"}\n\n`
-        );
+        res.write(`--${boundary}\r\n`);
+        res.write(`Content-Type: application/json\r\n\r\n`);
+        res.write(`{"status":"ready","message":"Model ${model} is ready"}\r\n`);
+        res.write(`--${boundary}--\r\n`);
       } catch (error) {
         const errorMessage =
           error instanceof Error ? error.message : "Unknown error occurred";
-        res.write(`data: {"error":${JSON.stringify(errorMessage)}}\n\n`);
+        res.write(`--${boundary}\r\n`);
+        res.write(`Content-Type: application/json\r\n\r\n`);
+        res.write(`{"error":${JSON.stringify(errorMessage)}}\r\n`);
+        res.write(`--${boundary}--\r\n`);
       } finally {
         res.end();
       }
@@ -45,7 +58,10 @@ export function createApiRouter(ollamaPort: number) {
       console.error("Error pulling model:", err);
       const errorMessage =
         err instanceof Error ? err.message : "An unknown error occurred";
-      res.write(`data: {"error": ${JSON.stringify(errorMessage)}}\n\n`);
+      res.write(`--PROGRESS_BOUNDARY\r\n`);
+      res.write(`Content-Type: application/json\r\n\r\n`);
+      res.write(`{"error": ${JSON.stringify(errorMessage)}}\r\n`);
+      res.write(`--PROGRESS_BOUNDARY--\r\n`);
       res.end();
     }
   });
@@ -69,7 +85,11 @@ export function createApiRouter(ollamaPort: number) {
           await ollamaService.start();
         }
 
-        res.setHeader("Content-Type", "text/event-stream");
+        const boundary = "PROGRESS_BOUNDARY";
+        res.setHeader(
+          "Content-Type",
+          `multipart/x-mixed-replace; boundary=${boundary}`
+        );
         res.setHeader("Cache-Control", "no-cache");
         res.setHeader("Connection", "keep-alive");
         res.setHeader("Access-Control-Allow-Origin", "*");
@@ -94,18 +114,26 @@ export function createApiRouter(ollamaPort: number) {
 
           for (const line of lines) {
             if (line.trim()) {
-              res.write(`data: ${line}\n\n`);
+              res.write(`--PROGRESS_BOUNDARY\r\n`);
+              res.write(`Content-Type: application/json\r\n\r\n`);
+              res.write(`${line}\r\n`);
             }
           }
         }
 
-        res.write('data: {"done": true}\n\n');
+        res.write(`--PROGRESS_BOUNDARY\r\n`);
+        res.write(`Content-Type: application/json\r\n\r\n`);
+        res.write(`{"done": true}\r\n`);
+        res.write(`--PROGRESS_BOUNDARY--\r\n`);
         res.end();
       } catch (err) {
         console.error("Error:", err);
         const errorMessage =
           err instanceof Error ? err.message : "An unknown error occurred";
-        res.write(`data: {"error": ${JSON.stringify(errorMessage)}}\n\n`);
+        res.write(`--PROGRESS_BOUNDARY\r\n`);
+        res.write(`Content-Type: application/json\r\n\r\n`);
+        res.write(`{"error": ${JSON.stringify(errorMessage)}}\r\n`);
+        res.write(`--PROGRESS_BOUNDARY--\r\n`);
         res.end();
       }
     }

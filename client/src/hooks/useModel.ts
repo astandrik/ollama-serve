@@ -3,30 +3,27 @@ import { ProgressType, StreamResponse } from "../types";
 
 export const useModel = () => {
   const [model, setModel] = useState<string>("");
-  const [response, setResponse] = useState<string>("");
+  const [responses, setResponses] = useState<Record<string, string>>({});
   const [error, setError] = useState<string>("");
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [downloadProgress, setDownloadProgress] = useState<ProgressType | null>(
     null
   );
 
-  const handleMultipartResponse = async (response: Response) => {
+  const handleMultipartResponse = async (
+    response: Response,
+    title?: string
+  ) => {
     const reader = response.body?.getReader();
     if (!reader) throw new Error("No response body");
 
     const decoder = new TextDecoder();
     let buffer = "";
-    let boundary = "";
+    const boundary = "PROGRESS_BOUNDARY";
 
-    // Extract boundary from Content-Type header
-    const contentType = response.headers.get("Content-Type") || "";
-    const boundaryMatch = contentType.match(/boundary=([^;]+)/);
-    if (boundaryMatch) {
-      boundary = boundaryMatch[1];
-    }
-
-    if (!boundary) {
-      throw new Error("No boundary found in multipart response");
+    // Reset response for this title if it exists
+    if (title) {
+      setResponses((prev) => ({ ...prev, [title]: "" }));
     }
 
     while (true) {
@@ -35,49 +32,60 @@ export const useModel = () => {
 
       buffer += decoder.decode(value, { stream: true });
 
-      // Split buffer by boundary
-      const parts = buffer.split(`--${boundary}`);
-
-      // Keep the last part in buffer as it might be incomplete
-      buffer = parts.pop() || "";
-
       // Process complete parts
-      for (const part of parts) {
-        if (part.trim() && !part.includes("--\r\n")) {
-          // Skip empty parts and end boundary
-          try {
-            // Extract JSON content from part
-            const match = part.match(/\r\n\r\n(.*?)\r\n/s);
-            if (match) {
-              const data: StreamResponse = JSON.parse(match[1]);
-              console.log("Received part:", data);
+      while (true) {
+        const boundaryIndex = buffer.indexOf(`--${boundary}\r\n`);
+        if (boundaryIndex === -1) break;
 
-              if (data.error) {
-                console.error("Stream error:", data.error);
-                setError(data.error);
-                setDownloadProgress(null);
-                return;
-              }
+        // Find the end of this part
+        const endIndex = buffer.indexOf(
+          `--${boundary}`,
+          boundaryIndex + boundary.length + 4
+        );
+        if (endIndex === -1) break;
 
-              if (data.progress) {
-                console.log("Setting progress:", data.progress);
-                setDownloadProgress(data.progress);
-              }
+        // Extract the part content
+        const part = buffer.substring(boundaryIndex, endIndex);
+        buffer = buffer.substring(endIndex);
 
-              if (data.status === "ready") {
-                console.log("Model ready:", data.message);
-                setDownloadProgress(null);
-                setTimeout(() => setError(""), 2000);
-              }
+        // Skip if this is the end boundary
+        if (part.includes(`--${boundary}--`)) continue;
 
-              if (data.response) {
-                console.log("Received response chunk");
-                setResponse((prev) => prev + data.response);
-              }
+        try {
+          // Extract JSON content between double newlines
+          const match = part.match(/\r\n\r\n(.*?)\r\n/s);
+          if (match) {
+            const data: StreamResponse = JSON.parse(match[1]);
+
+            if (data.error) {
+              console.error("Stream error:", data.error);
+              setError(data.error);
+              setDownloadProgress(null);
+              return;
             }
-          } catch (e) {
-            console.error("Error parsing multipart data:", e);
+
+            if (data.progress) {
+              setDownloadProgress(data.progress);
+            }
+
+            if (data.status === "ready") {
+              setDownloadProgress(null);
+              setTimeout(() => setError(""), 2000);
+            }
+
+            if (data.response && title) {
+              setResponses((prev) => ({
+                ...prev,
+                [title]: (prev[title] || "") + data.response,
+              }));
+            }
+
+            if (data.done) {
+              return;
+            }
           }
+        } catch (e) {
+          console.error("Error parsing multipart data:", e);
         }
       }
     }
@@ -92,7 +100,7 @@ export const useModel = () => {
     try {
       setIsLoading(true);
       setError("");
-      setResponse("");
+      setResponses({});
       setDownloadProgress(null);
 
       console.log("Starting model pull request...");
@@ -126,7 +134,11 @@ export const useModel = () => {
     }
   };
 
-  const generateExample = async (prompt: string, code: string) => {
+  const generateExample = async (
+    title: string,
+    prompt: string,
+    code: string
+  ) => {
     if (!model.trim()) {
       setError("Please enter a model name");
       return;
@@ -135,7 +147,6 @@ export const useModel = () => {
     try {
       setIsLoading(true);
       setError("");
-      setResponse("");
       setDownloadProgress(null);
 
       const response = await fetch("/api/generate", {
@@ -153,7 +164,7 @@ export const useModel = () => {
         throw new Error(`HTTP error! status: ${response.status}, ${errorText}`);
       }
 
-      await handleMultipartResponse(response);
+      await handleMultipartResponse(response, title);
     } catch (err) {
       const errorMessage =
         err instanceof Error ? err.message : "An error occurred";
@@ -168,7 +179,7 @@ export const useModel = () => {
   return {
     model,
     setModel,
-    response,
+    responses,
     error,
     isLoading,
     downloadProgress,

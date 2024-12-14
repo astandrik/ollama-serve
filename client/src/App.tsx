@@ -10,7 +10,7 @@ const App: React.FC = () => {
   const {
     model,
     setModel,
-    response,
+    responses,
     error,
     isLoading,
     downloadProgress,
@@ -46,8 +46,10 @@ const App: React.FC = () => {
               {...example}
               isLoading={isLoading}
               model={model}
-              response={response}
-              onTry={() => generateExample(example.prompt, example.code)}
+              responses={responses}
+              onTry={(title) =>
+                generateExample(title, example.prompt, example.code)
+              }
             />
           ))}
         </div>

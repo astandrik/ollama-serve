@@ -8,8 +8,8 @@ interface CodeExampleProps {
   prompt: string;
   isLoading: boolean;
   model: string;
-  response?: string;
-  onTry: () => void;
+  responses: Record<string, string>;
+  onTry: (title: string) => void;
 }
 
 export const CodeExample: React.FC<CodeExampleProps> = ({
@@ -19,11 +19,16 @@ export const CodeExample: React.FC<CodeExampleProps> = ({
   code,
   isLoading,
   model,
-  response,
+  responses,
   onTry,
 }) => {
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
+  };
+
+  const handleTry = (e: React.MouseEvent) => {
+    e.preventDefault();
+    onTry(title);
   };
 
   return (
@@ -37,13 +42,13 @@ export const CodeExample: React.FC<CodeExampleProps> = ({
         </div>
         <pre>{code}</pre>
       </div>
-      <button onClick={onTry} disabled={isLoading || !model.trim()}>
+      <button onClick={handleTry} disabled={isLoading || !model.trim()}>
         Try with {model || "selected model"}
       </button>
-      {response && (
+      {responses[title] && (
         <div className="response">
           <h4>Response:</h4>
-          <pre>{response}</pre>
+          <pre>{responses[title]}</pre>
         </div>
       )}
     </div>
