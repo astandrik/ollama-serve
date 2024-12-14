@@ -11,7 +11,7 @@ app.use(cors());
 app.use(express.json());
 
 // Create and mount API routes
-app.use("/api", createApiRouter(Number(OLLAMA_PORT)));
+app.use("/api", createApiRouter(Number(OLLAMA_PORT), Number(PORT)));
 
 const startServer = async () => {
   try {

@@ -8,7 +8,7 @@ interface GenerateRequest {
   stream?: boolean;
 }
 
-export function createApiRouter(ollamaPort: number) {
+export function createApiRouter(ollamaPort: number, serverPort: number) {
   const router = Router();
   const ollamaService = new OllamaService(ollamaPort);
   const modelService = new ModelService(ollamaPort);
@@ -166,6 +166,15 @@ export function createApiRouter(ollamaPort: number) {
         installed: await ollamaService.checkInstalled(),
         running: isRunning,
       },
+    });
+  });
+
+  // Server info endpoint
+  router.get("/server-info", (req: Request, res: Response): void => {
+    const protocol = req.protocol;
+    const hostname = req.hostname;
+    res.json({
+      baseUrl: `${protocol}://${hostname}:${serverPort}`,
     });
   });
 

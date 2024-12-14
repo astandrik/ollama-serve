@@ -3,6 +3,7 @@ import React from "react";
 interface ModelInputProps {
   model: string;
   isLoading: boolean;
+  availableModels: string[];
   onModelChange: (model: string) => void;
   onPullModel: () => void;
 }
@@ -10,6 +11,7 @@ interface ModelInputProps {
 export const ModelInput: React.FC<ModelInputProps> = ({
   model,
   isLoading,
+  availableModels,
   onModelChange,
   onPullModel,
 }) => {
@@ -27,6 +29,20 @@ export const ModelInput: React.FC<ModelInputProps> = ({
           Pull Model
         </button>
       </div>
+      {availableModels.length > 0 && (
+        <div className="quick-models">
+          {availableModels.map((modelName) => (
+            <button
+              key={modelName}
+              className="quick-model-btn"
+              onClick={() => onModelChange(modelName)}
+              disabled={isLoading}
+            >
+              {modelName}
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 };

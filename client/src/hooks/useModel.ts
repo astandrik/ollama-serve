@@ -1,14 +1,36 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { ProgressType, StreamResponse } from "../types";
 
 export const useModel = () => {
   const [model, setModel] = useState<string>("");
   const [responses, setResponses] = useState<Record<string, string>>({});
+
+  const fetchAvailableModels = async () => {
+    try {
+      const response = await fetch("/api/models");
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      const data = await response.json();
+      setAvailableModels(
+        data.models?.map((m: { name: string }) => m.name) || []
+      );
+    } catch (err) {
+      console.error("Error fetching models:", err);
+    }
+  };
+
+  useEffect(() => {
+    fetchAvailableModels();
+  }, []);
+
   const [error, setError] = useState<string>("");
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [loadingTitle, setLoadingTitle] = useState<string | null>(null);
   const [downloadProgress, setDownloadProgress] = useState<ProgressType | null>(
     null
   );
+  const [availableModels, setAvailableModels] = useState<string[]>([]);
 
   const handleMultipartResponse = async (
     response: Response,
@@ -131,6 +153,7 @@ export const useModel = () => {
       setDownloadProgress(null);
     } finally {
       setIsLoading(false);
+      setLoadingTitle(null);
     }
   };
 
@@ -146,6 +169,7 @@ export const useModel = () => {
 
     try {
       setIsLoading(true);
+      setLoadingTitle(title);
       setError("");
       setDownloadProgress(null);
 
@@ -182,7 +206,9 @@ export const useModel = () => {
     responses,
     error,
     isLoading,
+    loadingTitle,
     downloadProgress,
+    availableModels,
     pullModel,
     generateExample,
   };
