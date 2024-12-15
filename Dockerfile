@@ -26,17 +26,31 @@ RUN apt-get update && apt-get install -y curl && \
     apt-get install -y nginx && \
     rm -rf /var/lib/apt/lists/*
 
+# Setup Nginx directories
+RUN rm -rf /usr/share/nginx/html/* && \
+				mkdir -p /usr/share/nginx/html
+
 # Copy built client to Nginx directory
-COPY --from=builder /app/client/dist /usr/share/nginx/html
+COPY --from=builder /app/client/dist/* /usr/share/nginx/html/
 
 # Configure Nginx for React Router
 RUN echo 'server { \
     listen 80; \
     location / { \
-    root /usr/share/nginx/html; \
-    try_files $uri $uri/ /index.html; \
+        root /usr/share/nginx/html; \
+        index index.html; \
+        try_files $uri $uri/ /index.html; \
     } \
-    }' > /etc/nginx/conf.d/default.conf
+    location /api { \
+        proxy_pass http://localhost:3001; \
+        proxy_http_version 1.1; \
+        proxy_set_header Upgrade $http_upgrade; \
+        proxy_set_header Connection "upgrade"; \
+        proxy_set_header Host $host; \
+        proxy_cache_bypass $http_upgrade; \
+    } \
+}' > /etc/nginx/conf.d/default.conf && \
+rm -f /etc/nginx/sites-enabled/default
 
 # Copy built server
 COPY --from=builder /app/server/dist /app/server/dist
@@ -49,7 +63,7 @@ RUN echo '#!/bin/bash\n\
     exec ollama serve' > /start.sh && chmod +x /start.sh
 
 # Expose ports
-EXPOSE 80 3000 11434
+EXPOSE 80 3001 11434
 
 # Set environment variables
 ENV NODE_ENV=production
