@@ -1,15 +1,62 @@
 # Ollama Serve
 
-A web interface for Ollama with CUDA support.
+A web interface for Ollama with CUDA support, packaged as a single Docker image.
 
 ## Prerequisites
 
 - Docker
-- Docker Compose
 - NVIDIA GPU with installed drivers
 - NVIDIA Container Toolkit (nvidia-docker)
 
-## Installation
+## Quick Start
+
+Pull and run the image:
+
+```bash
+docker run -d \
+  --gpus all \
+  -p 80:80 \
+  -p 3000:3000 \
+  -p 11434:11434 \
+  -v ollama_data:/root/.ollama \
+  [your-docker-registry]/ollama-serve
+```
+
+The application will be available at:
+
+- Web Interface: http://localhost
+- Server API: http://localhost:3000
+- Ollama API: http://localhost:11434
+
+## Building the Image
+
+If you want to build the image yourself:
+
+```bash
+# Build the image
+docker build -t ollama-serve .
+
+# Run the container
+docker run -d \
+  --gpus all \
+  -p 80:80 \
+  -p 3000:3000 \
+  -p 11434:11434 \
+  -v ollama_data:/root/.ollama \
+  ollama-serve
+```
+
+## Architecture
+
+The application runs as a single container with three main components:
+
+1. **Client**: React/TypeScript frontend served by Nginx on port 80
+2. **Server**: Node.js/Express backend on port 3000
+3. **Ollama**: AI model server with CUDA support on port 11434
+
+## GPU Support
+
+The container is configured to use NVIDIA GPUs through the NVIDIA Container Toolkit. To verify GPU support:
 
 1. Install NVIDIA Container Toolkit if not already installed:
 
@@ -24,72 +71,40 @@ sudo nvidia-ctk runtime configure --runtime=docker
 sudo systemctl restart docker
 ```
 
-2. Clone the repository:
-
-```bash
-git clone <repository-url>
-cd ollama-serve
-```
-
-3. Build and start the containers:
-
-```bash
-docker compose up --build
-```
-
-The application will be available at:
-
-- Web Interface: http://localhost
-- Server API: http://localhost:3000
-- Ollama API: http://localhost:11434
-
-## Architecture
-
-The application consists of three main components:
-
-1. **Client**: React/TypeScript frontend served by Nginx
-2. **Server**: Node.js/Express backend that manages Ollama
-3. **Ollama**: AI model server with CUDA support
-
-## Development
-
-To run the application in development mode:
-
-1. Start the containers:
-
-```bash
-docker compose up
-```
-
-2. Make changes to the code - the containers will automatically reload with your changes.
-
-## GPU Support
-
-The application is configured to use all available NVIDIA GPUs through Docker. GPU utilization can be monitored through the web interface's metrics page.
-
-## Volumes
-
-- Ollama models and data are persisted in a Docker volume named `ollama_data`
-
-## Ports
-
-- 80: Web Interface (Client)
-- 3000: Backend API (Server)
-- 11434: Ollama API
-
-## Troubleshooting
-
-1. Verify NVIDIA drivers and Docker integration:
+2. Verify NVIDIA drivers and Docker integration:
 
 ```bash
 nvidia-smi
 docker run --rm --gpus all nvidia/cuda:11.0-base nvidia-smi
 ```
 
-2. Check container logs:
+## Data Persistence
+
+Ollama models and data are persisted in a Docker volume named `ollama_data`. This ensures your models are preserved between container restarts.
+
+## Troubleshooting
+
+1. Check container logs:
 
 ```bash
-docker compose logs -f
+docker logs [container-id]
 ```
 
-3. If Ollama is not detecting the GPU, ensure the NVIDIA Container Toolkit is properly installed and Docker service has been restarted.
+2. If GPU is not detected:
+
+- Verify NVIDIA Container Toolkit installation
+- Ensure the `--gpus all` flag is used when running the container
+- Check NVIDIA driver installation with `nvidia-smi`
+
+3. Access individual service logs inside the container:
+
+```bash
+# Nginx logs
+docker exec [container-id] tail -f /var/log/nginx/error.log
+
+# Server logs
+docker exec [container-id] tail -f /app/server/logs/server.log
+
+# Ollama logs
+docker exec [container-id] tail -f /root/.ollama/logs/ollama.log
+```
