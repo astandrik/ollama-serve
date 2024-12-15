@@ -58,4 +58,4 @@ ENV OLLAMA_HOST=localhost
 ENV OLLAMA_PORT=11434
 
 # Start all services
-CMD ["/start.sh"]
+CMD /start.sh
