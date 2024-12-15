@@ -1,5 +1,6 @@
 import express from "express";
 import cors from "cors";
+import { createProxyMiddleware } from "http-proxy-middleware";
 import { createApiRouter } from "./routes/api";
 import { OllamaService } from "./services/ollama";
 
@@ -9,6 +10,18 @@ const OLLAMA_PORT = process.env.OLLAMA_PORT || 11434;
 
 app.use(cors());
 app.use(express.json());
+
+// Proxy /ollama requests to Ollama server
+app.use(
+  "/ollama",
+  createProxyMiddleware({
+    target: `http://localhost:${OLLAMA_PORT}`,
+    pathRewrite: {
+      "^/ollama": "", // Remove /ollama prefix when forwarding
+    },
+    changeOrigin: true,
+  })
+);
 
 // Create and mount API routes
 app.use("/api", createApiRouter(Number(OLLAMA_PORT), Number(PORT)));

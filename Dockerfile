@@ -41,32 +41,13 @@ RUN echo 'server { \
         index index.html; \
         try_files $uri $uri/ /index.html; \
     } \
-    location /api { \
+    location ~ ^/(api|ollama) { \
         proxy_pass http://localhost:3001; \
         proxy_http_version 1.1; \
         proxy_set_header Upgrade $http_upgrade; \
         proxy_set_header Connection "upgrade"; \
         proxy_set_header Host $host; \
         proxy_cache_bypass $http_upgrade; \
-    } \
-    location /ollama/ { \
-        proxy_pass http://localhost:11434/; \
-        proxy_http_version 1.1; \
-        proxy_set_header Upgrade $http_upgrade; \
-        proxy_set_header Connection "upgrade"; \
-        proxy_set_header Host $host; \
-        proxy_set_header X-Real-IP $remote_addr; \
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for; \
-        proxy_set_header X-Forwarded-Proto $scheme; \
-        proxy_cache_bypass $http_upgrade; \
-        proxy_buffering off; \
-        proxy_read_timeout 300s; \
-        add_header Access-Control-Allow-Origin * always; \
-        add_header Access-Control-Allow-Methods "GET, POST, OPTIONS, PUT, DELETE" always; \
-        add_header Access-Control-Allow-Headers "*" always; \
-        if ($request_method = OPTIONS) { \
-            return 204; \
-        } \
     } \
 }' > /etc/nginx/conf.d/default.conf && \
 rm -f /etc/nginx/sites-enabled/default
