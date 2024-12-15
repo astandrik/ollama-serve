@@ -1,8 +1,16 @@
-import express from "express";
+import express, { Request, Response } from "express";
 import cors from "cors";
 import { createProxyMiddleware } from "http-proxy-middleware";
 import { createApiRouter } from "./routes/api";
 import { OllamaService } from "./services/ollama";
+import { IncomingMessage, ServerResponse } from "http";
+
+// Extend Request type to include our custom properties
+interface ExtendedRequest extends IncomingMessage {
+  path?: string;
+  startTime?: number;
+  method?: string;
+}
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -23,7 +31,44 @@ app.use(
       "^/api/ollama": "", // Remove /api/ollama prefix when forwarding
     },
     changeOrigin: true,
-  })
+    // Add detailed logging with proper types
+    onProxyReq: (proxyReq: IncomingMessage, req: ExtendedRequest) => {
+      const startTime = Date.now();
+      req.startTime = startTime;
+      console.log(
+        `[Proxy] ${req.method} ${req.path} - Request started at ${new Date(
+          startTime
+        ).toISOString()}`
+      );
+    },
+    onProxyRes: (proxyRes: IncomingMessage, req: ExtendedRequest) => {
+      const duration = Date.now() - (req.startTime || 0);
+      console.log(`[Proxy] ${req.method} ${req.path} - Response received:
+        Status: ${proxyRes.statusCode}
+        Duration: ${duration}ms
+        Time: ${new Date().toISOString()}`);
+    },
+    onError: (err: Error, req: ExtendedRequest, res: ServerResponse) => {
+      const duration = Date.now() - (req.startTime || 0);
+      console.error(`[Proxy] ${req.method} ${
+        req.path
+      } - Error after ${duration}ms:
+        Error: ${err.message}
+        Code: ${(err as any).code}
+        Time: ${new Date().toISOString()}`);
+      if (!res.headersSent) {
+        res.writeHead(504, { "Content-Type": "application/json" });
+        res.end(
+          JSON.stringify({
+            error: "Proxy Error",
+            message: err.message,
+            code: (err as any).code,
+            duration: duration,
+          })
+        );
+      }
+    },
+  } as any) // Type assertion needed due to http-proxy-middleware types limitation
 );
 
 const startServer = async () => {
