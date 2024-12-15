@@ -59,13 +59,8 @@ COPY --from=builder /app/server/node_modules /app/server/node_modules
 # Create startup script
 RUN echo '#!/bin/bash\n\
     nginx &\n\
-    cd /app/server && node dist/index.js 2>&1 | tee -a /var/log/server.log &\n\
+    cd /app/server && node dist/index.js &\n\
     exec ollama serve' > /start.sh && chmod +x /start.sh
-
-# Ensure logs are forwarded to Docker logs
-RUN ln -sf /dev/stdout /var/log/nginx/access.log && \
-    ln -sf /dev/stderr /var/log/nginx/error.log && \
-    ln -sf /dev/stdout /var/log/server.log
 
 # Expose ports
 EXPOSE 80 3001 11434

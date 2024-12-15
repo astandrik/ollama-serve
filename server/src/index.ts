@@ -35,29 +35,27 @@ app.use(
     onProxyReq: (proxyReq: IncomingMessage, req: ExtendedRequest) => {
       const startTime = Date.now();
       req.startTime = startTime;
-      console.info(
-        `[PROXY REQUEST] ${req.method} ${req.path}
-        Time: ${new Date(startTime).toISOString()}
-        Target: ${OLLAMA_PORT}`
+      console.log(
+        `[Proxy] ${req.method} ${req.path} - Request started at ${new Date(
+          startTime
+        ).toISOString()}`
       );
     },
     onProxyRes: (proxyRes: IncomingMessage, req: ExtendedRequest) => {
       const duration = Date.now() - (req.startTime || 0);
-      console.info(`[PROXY RESPONSE] ${req.method} ${req.path}
+      console.log(`[Proxy] ${req.method} ${req.path} - Response received:
         Status: ${proxyRes.statusCode}
         Duration: ${duration}ms
-        Time: ${new Date().toISOString()}
-        Target: ${OLLAMA_PORT}`);
+        Time: ${new Date().toISOString()}`);
     },
     onError: (err: Error, req: ExtendedRequest, res: ServerResponse) => {
       const duration = Date.now() - (req.startTime || 0);
-      console.error(`[PROXY ERROR] ${req.method} ${req.path}
+      console.error(`[Proxy] ${req.method} ${
+        req.path
+      } - Error after ${duration}ms:
         Error: ${err.message}
         Code: ${(err as any).code}
-        Duration: ${duration}ms
-        Time: ${new Date().toISOString()}
-        Target: ${OLLAMA_PORT}
-        Stack: ${err.stack || "No stack trace"}`);
+        Time: ${new Date().toISOString()}`);
       if (!res.headersSent) {
         res.writeHead(504, { "Content-Type": "application/json" });
         res.end(
