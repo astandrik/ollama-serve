@@ -1,0 +1,39 @@
+version: '3.8'
+
+services:
+  client:
+    build: 
+      context: ./client
+    ports:
+      - "80:80"
+    depends_on:
+      - server
+
+  server:
+    build: 
+      context: ./server
+    environment:
+      - NODE_ENV=production
+      - OLLAMA_HOST=ollama
+      - OLLAMA_PORT=11434
+    ports:
+      - "3000:3000"
+    depends_on:
+      - ollama
+
+  ollama:
+    image: ollama/ollama:latest
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+
+volumes:
+  ollama_data:
