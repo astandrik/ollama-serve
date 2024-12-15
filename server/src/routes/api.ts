@@ -1,6 +1,7 @@
 import { Router, Request, Response } from "express";
 import { OllamaService } from "../services/ollama";
 import { ModelService } from "../services/model";
+import os from "os";
 
 interface GenerateRequest {
   model: string;
@@ -177,6 +178,75 @@ export function createApiRouter(ollamaPort: number, serverPort: number) {
       baseUrl: `${protocol}://${hostname}:${serverPort}`,
     });
   });
+
+  // System metrics endpoint
+  router.get(
+    "/metrics",
+    async (_req: Request, res: Response): Promise<void> => {
+      try {
+        const cpuUsage = os.loadavg()[0]; // 1 minute load average
+        const totalMem = os.totalmem();
+        const freeMem = os.freemem();
+        const usedMem = totalMem - freeMem;
+        const memoryUsage = (usedMem / totalMem) * 100;
+
+        // Get GPU metrics
+        const gpuInfo = await ollamaService.getGpuInfo();
+
+        // Get model metrics
+        const modelMetrics = modelService.getMetrics();
+
+        res.json({
+          cpu: {
+            loadAverage: cpuUsage.toFixed(2),
+            cores: os.cpus().length,
+          },
+          memory: {
+            total: Math.round(totalMem / (1024 * 1024 * 1024)), // Convert to GB
+            used: Math.round(usedMem / (1024 * 1024 * 1024)), // Convert to GB
+            usagePercentage: memoryUsage.toFixed(2),
+          },
+          ...(gpuInfo && { gpu: gpuInfo }), // Include GPU info if available
+          model: {
+            requests: {
+              total: modelMetrics.totalRequests,
+              successful: modelMetrics.successfulRequests,
+              failed: modelMetrics.failedRequests,
+              lastRequestTime: modelMetrics.lastRequestTime,
+            },
+            tokens: {
+              input: modelMetrics.tokens.input,
+              output: modelMetrics.tokens.output,
+              total: modelMetrics.tokens.total,
+            },
+            performance: {
+              inputTokensPerSecond:
+                modelMetrics.performance.inputTokensPerSecond.toFixed(1),
+              outputTokensPerSecond:
+                modelMetrics.performance.outputTokensPerSecond.toFixed(1),
+              totalTokensPerSecond:
+                modelMetrics.performance.totalTokensPerSecond.toFixed(1),
+              requestsPerMinute:
+                modelMetrics.performance.requestsPerMinute.toFixed(1),
+              averageTokensPerRequest:
+                modelMetrics.performance.averageTokensPerRequest.toFixed(1),
+              averageResponseTime: (
+                modelMetrics.time.averageResponseTime / 1000
+              ).toFixed(2), // Convert to seconds
+            },
+            uptime: Math.round(
+              (Date.now() - modelMetrics.startTime) / 1000 / 60
+            ), // Convert to minutes
+          },
+        });
+      } catch (err) {
+        console.error("Error fetching metrics:", err);
+        const errorMessage =
+          err instanceof Error ? err.message : "An unknown error occurred";
+        res.status(500).json({ error: errorMessage });
+      }
+    }
+  );
 
   return router;
 }

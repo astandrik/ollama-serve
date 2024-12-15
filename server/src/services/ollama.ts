@@ -6,11 +6,47 @@ const execAsync = promisify(exec);
 
 let ollamaProcess: ReturnType<typeof spawn> | null = null;
 
+interface GpuInfo {
+  name: string;
+  memoryTotal: number;
+  memoryUsed: number;
+  utilization: number;
+}
+
 export class OllamaService {
   private port: number;
 
   constructor(port: number) {
     this.port = port;
+  }
+
+  async getGpuInfo(): Promise<GpuInfo | null> {
+    try {
+      // First check if Ollama is running
+      if (!(await this.checkRunning())) {
+        return null;
+      }
+
+      const response = await fetch(`http://localhost:${this.port}/api/show`);
+      if (!response.ok) {
+        return null;
+      }
+      const data = await response.json();
+
+      // Extract GPU info from Ollama's response
+      if (data.gpu) {
+        return {
+          name: data.gpu.name || "Unknown GPU",
+          memoryTotal: data.gpu.memory_total || 0,
+          memoryUsed: data.gpu.memory_used || 0,
+          utilization: data.gpu.utilization || 0,
+        };
+      }
+      return null;
+    } catch (error) {
+      console.error("Error fetching GPU info:", error);
+      return null;
+    }
   }
 
   // Check if Ollama is installed
