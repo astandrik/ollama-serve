@@ -41,7 +41,7 @@ RUN echo 'server { \
         index index.html; \
         try_files $uri $uri/ /index.html; \
     } \
-    location ~ ^/(api|ollama) { \
+    location /api { \
         proxy_pass http://localhost:3001; \
         proxy_http_version 1.1; \
         proxy_set_header Upgrade $http_upgrade; \
