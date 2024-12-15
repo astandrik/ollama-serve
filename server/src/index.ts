@@ -35,29 +35,29 @@ app.use(
     onProxyReq: (proxyReq: IncomingMessage, req: ExtendedRequest) => {
       const startTime = Date.now();
       req.startTime = startTime;
-      console.info(
+      process.stdout.write(
         `[PROXY REQUEST] ${req.method} ${req.path}
         Time: ${new Date(startTime).toISOString()}
-        Target: ${OLLAMA_PORT}`
+        Target: ${OLLAMA_PORT}\n`
       );
     },
     onProxyRes: (proxyRes: IncomingMessage, req: ExtendedRequest) => {
       const duration = Date.now() - (req.startTime || 0);
-      console.info(`[PROXY RESPONSE] ${req.method} ${req.path}
+      process.stdout.write(`[PROXY RESPONSE] ${req.method} ${req.path}
         Status: ${proxyRes.statusCode}
         Duration: ${duration}ms
         Time: ${new Date().toISOString()}
-        Target: ${OLLAMA_PORT}`);
+        Target: ${OLLAMA_PORT}\n`);
     },
     onError: (err: Error, req: ExtendedRequest, res: ServerResponse) => {
       const duration = Date.now() - (req.startTime || 0);
-      console.error(`[PROXY ERROR] ${req.method} ${req.path}
+      process.stderr.write(`[PROXY ERROR] ${req.method} ${req.path}
         Error: ${err.message}
         Code: ${(err as any).code}
         Duration: ${duration}ms
         Time: ${new Date().toISOString()}
         Target: ${OLLAMA_PORT}
-        Stack: ${err.stack || "No stack trace"}`);
+        Stack: ${err.stack || "No stack trace"}\n`);
       if (!res.headersSent) {
         res.writeHead(504, { "Content-Type": "application/json" });
         res.end(
@@ -80,11 +80,13 @@ const startServer = async () => {
     await ollamaService.start();
 
     app.listen(PORT, () => {
-      console.log(`Server running on port ${PORT}`);
-      console.log(`Ollama running on port ${OLLAMA_PORT}`);
+      process.stdout.write(`[SERVER START] Server running on port ${PORT}\n`);
+      process.stdout.write(
+        `[SERVER START] Ollama running on port ${OLLAMA_PORT}\n`
+      );
     });
   } catch (error) {
-    console.error("Failed to start server:", error);
+    process.stderr.write(`[SERVER ERROR] Failed to start server: ${error}\n`);
     process.exit(1);
   }
 };
