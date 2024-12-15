@@ -19,7 +19,7 @@ const useMetrics = (interval = 1000) => {
       if (!mounted) return;
 
       try {
-        const response = await fetch(`${baseUrl}/api/metrics`);
+        const response = await fetch("/api/metrics");
         if (!response.ok) {
           const errorData = await response.json().catch(() => ({}));
           throw new Error(

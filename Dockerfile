@@ -49,6 +49,14 @@ RUN echo 'server { \
         proxy_set_header Host $host; \
         proxy_cache_bypass $http_upgrade; \
     } \
+    location /ollama/ { \
+        proxy_pass http://localhost:11434/; \
+        proxy_http_version 1.1; \
+        proxy_set_header Upgrade $http_upgrade; \
+        proxy_set_header Connection "upgrade"; \
+        proxy_set_header Host $host; \
+        proxy_cache_bypass $http_upgrade; \
+    } \
 }' > /etc/nginx/conf.d/default.conf && \
 rm -f /etc/nginx/sites-enabled/default
 
