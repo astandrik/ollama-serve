@@ -44,10 +44,9 @@ COPY --from=builder /app/server/node_modules /app/server/node_modules
 
 # Create startup script
 RUN echo '#!/bin/bash\n\
-    nginx\n\
+    nginx &\n\
     cd /app/server && node dist/index.js &\n\
-    ollama serve\n\
-    wait' > /start.sh && chmod +x /start.sh
+    exec ollama serve' > /start.sh && chmod +x /start.sh
 
 # Expose ports
 EXPOSE 80 3000 11434
@@ -58,4 +57,5 @@ ENV OLLAMA_HOST=localhost
 ENV OLLAMA_PORT=11434
 
 # Start all services
-CMD /start.sh
+ENTRYPOINT ["/bin/bash"]
+CMD ["/start.sh"]
